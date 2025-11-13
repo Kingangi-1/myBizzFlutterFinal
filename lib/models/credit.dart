@@ -1,13 +1,13 @@
 class Credit {
   final String id;
-  final String type;
+  final String type; // 'customer' or 'supplier'
   final String contactId;
   final String contactName;
   final double amount;
   final DateTime dueDate;
   final DateTime createdDate;
   final String? description;
-  final String status;
+  final String status; // 'pending', 'paid', 'overdue'
   final List<PaymentRecord> payments;
 
   Credit({
@@ -30,6 +30,12 @@ class Credit {
 
   bool get isOverdue {
     return status == 'pending' && dueDate.isBefore(DateTime.now());
+  }
+
+  String get statusDisplay {
+    if (status == 'paid') return 'Paid';
+    if (isOverdue) return 'Overdue';
+    return 'Pending';
   }
 
   Map<String, dynamic> toMap() {
@@ -92,7 +98,7 @@ class PaymentRecord {
   final String creditId;
   final DateTime paymentDate;
   final double amount;
-  final String method;
+  final String method; // 'cash', 'mpesa', 'bank'
   final String? reference;
 
   PaymentRecord({
