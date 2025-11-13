@@ -11,6 +11,10 @@ class TransactionProvider with ChangeNotifier {
   // Counter for generating unique IDs (for web storage)
   int _nextId = 1;
 
+  TransactionProvider() {
+    loadTransactions();
+  }
+
   // Load all transactions (web-compatible version)
   Future<void> loadTransactions() async {
     _isLoading = true;
@@ -101,7 +105,81 @@ class TransactionProvider with ChangeNotifier {
         .toList();
   }
 
-  // Analytics methods
+  // ===========================================================================
+  // ANALYTICS METHODS FOR REPORTS
+  // ===========================================================================
+
+  // Get transactions by month
+  List<BusinessTransaction> getTransactionsByMonth(DateTime month) {
+    return _transactions.where((transaction) {
+      return transaction.date.year == month.year &&
+          transaction.date.month == month.month;
+    }).toList();
+  }
+
+  // Get income transactions by month
+  List<BusinessTransaction> getIncomeTransactionsByMonth(DateTime month) {
+    return getTransactionsByMonth(month).where((transaction) {
+      return transaction.type == 'sale' || transaction.type == 'mpesa_deposit';
+    }).toList();
+  }
+
+  // Get expense transactions by month
+  List<BusinessTransaction> getExpenseTransactionsByMonth(DateTime month) {
+    return getTransactionsByMonth(month).where((transaction) {
+      return transaction.type == 'expense' ||
+          transaction.type == 'purchase' ||
+          transaction.type == 'mpesa_withdrawal' ||
+          transaction.type == 'drawing';
+    }).toList();
+  }
+
+  // Get income by category for a specific month
+  Map<String, double> getIncomeByCategory(DateTime month) {
+    final incomeTransactions = getIncomeTransactionsByMonth(month);
+    final categories = <String, double>{};
+
+    for (final transaction in incomeTransactions) {
+      final category = transaction.category ?? 'Uncategorized';
+      categories[category] = (categories[category] ?? 0) + transaction.amount;
+    }
+
+    return categories;
+  }
+
+  // Get expenses by category for a specific month
+  Map<String, double> getExpensesByCategory(DateTime month) {
+    final expenseTransactions = getExpenseTransactionsByMonth(month);
+    final categories = <String, double>{};
+
+    for (final transaction in expenseTransactions) {
+      final category =
+          transaction.category ?? _getDefaultExpenseCategory(transaction.type);
+      categories[category] = (categories[category] ?? 0) + transaction.amount;
+    }
+
+    return categories;
+  }
+
+  String _getDefaultExpenseCategory(String type) {
+    switch (type) {
+      case 'purchase':
+        return 'Purchases';
+      case 'expense':
+        return 'General Expenses';
+      case 'mpesa_withdrawal':
+        return 'M-Pesa Withdrawals';
+      case 'drawing':
+        return 'Owner Drawings';
+      default:
+        return 'Other Expenses';
+    }
+  }
+
+  // ===========================================================================
+  // FINANCIAL SUMMARY METHODS
+  // ===========================================================================
+
   double getTodaySales() {
     final today = DateTime.now();
     return _transactions
@@ -110,7 +188,7 @@ class TransactionProvider with ChangeNotifier {
             t.date.month == today.month &&
             t.date.year == today.year &&
             (t.type == 'sale' || t.type == 'mpesa_deposit'))
-        .fold(0, (sum, transaction) => sum + transaction.amount);
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
   }
 
   double getTodayExpenses() {
@@ -124,7 +202,7 @@ class TransactionProvider with ChangeNotifier {
                 t.type == 'purchase' ||
                 t.type == 'mpesa_withdrawal' ||
                 t.type == 'drawing'))
-        .fold(0, (sum, transaction) => sum + transaction.amount);
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
   }
 
   double getNetCash() {
@@ -134,7 +212,7 @@ class TransactionProvider with ChangeNotifier {
   double getTotalIncome() {
     return _transactions
         .where((t) => t.type == 'sale' || t.type == 'mpesa_deposit')
-        .fold(0, (sum, transaction) => sum + transaction.amount);
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
   }
 
   double getTotalExpenses() {
@@ -144,7 +222,65 @@ class TransactionProvider with ChangeNotifier {
             t.type == 'purchase' ||
             t.type == 'mpesa_withdrawal' ||
             t.type == 'drawing')
-        .fold(0, (sum, transaction) => sum + transaction.amount);
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  // Get monthly income
+  double getMonthlyIncome(DateTime month) {
+    return getIncomeTransactionsByMonth(month)
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  // Get monthly expenses
+  double getMonthlyExpenses(DateTime month) {
+    return getExpenseTransactionsByMonth(month)
+        .fold(0.0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  // Get monthly net profit
+  double getMonthlyNetProfit(DateTime month) {
+    return getMonthlyIncome(month) - getMonthlyExpenses(month);
+  }
+
+  // ===========================================================================
+  // TREND ANALYSIS METHODS
+  // ===========================================================================
+
+  // Get monthly trends for the last 6 months
+  Map<String, Map<String, double>> getMonthlyTrends({int months = 6}) {
+    final now = DateTime.now();
+    final trends = <String, Map<String, double>>{};
+
+    for (int i = months - 1; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i);
+      final monthKey = _formatMonthKey(month);
+
+      trends[monthKey] = {
+        'income': getMonthlyIncome(month),
+        'expenses': getMonthlyExpenses(month),
+        'profit': getMonthlyNetProfit(month),
+      };
+    }
+
+    return trends;
+  }
+
+  String _formatMonthKey(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+    return '${months[date.month - 1]} ${date.year}';
   }
 
   // ===========================================================================
@@ -158,22 +294,48 @@ class TransactionProvider with ChangeNotifier {
     // In a real app, you might use shared_preferences or local storage
     return [];
 
-    // Optional: Add some sample data for testing
+    // Optional: Add some sample data for testing reports
     /*
     return [
       BusinessTransaction(
         id: 1,
-        amount: 3500,
+        amount: 15000,
         type: 'sale',
-        description: 'Product sales',
-        date: DateTime.now(),
+        description: 'Product sales - Electronics',
+        date: DateTime.now().subtract(Duration(days: 2)),
+        category: 'Electronics',
       ),
       BusinessTransaction(
         id: 2,
-        amount: 500,
+        amount: 5000,
+        type: 'sale',
+        description: 'Clothing sales',
+        date: DateTime.now().subtract(Duration(days: 5)),
+        category: 'Clothing',
+      ),
+      BusinessTransaction(
+        id: 3,
+        amount: 2500,
         type: 'expense',
-        description: 'Transport',
-        date: DateTime.now(),
+        description: 'Office supplies',
+        date: DateTime.now().subtract(Duration(days: 1)),
+        category: 'Supplies',
+      ),
+      BusinessTransaction(
+        id: 4,
+        amount: 3000,
+        type: 'purchase',
+        description: 'Inventory restock',
+        date: DateTime.now().subtract(Duration(days: 3)),
+        category: 'Inventory',
+      ),
+      BusinessTransaction(
+        id: 5,
+        amount: 1200,
+        type: 'mpesa_withdrawal',
+        description: 'Cash withdrawal',
+        date: DateTime.now().subtract(Duration(days: 7)),
+        category: 'Withdrawals',
       ),
     ];
     */
