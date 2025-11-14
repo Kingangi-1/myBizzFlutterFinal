@@ -4,11 +4,13 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/credit_provider.dart';
 import 'providers/business_profile_provider.dart';
+import 'providers/category_provider.dart'; // Add this import
 import 'screens/dashboard_screen.dart';
 import 'screens/transactions_screen.dart';
 import 'screens/credits_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/categories_screen.dart'; // Add this import
 import 'utils/constants.dart';
 
 void main() async {
@@ -43,6 +45,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => CreditProvider()),
         ChangeNotifierProvider(create: (_) => BusinessProfileProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryProvider()), // Add this
       ],
       child: MaterialApp(
         title: AppConstants.appName,

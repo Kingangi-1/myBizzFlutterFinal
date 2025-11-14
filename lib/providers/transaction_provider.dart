@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/transaction.dart';
+import '../models/category.dart';
 
 class TransactionProvider with ChangeNotifier {
   List<BusinessTransaction> _transactions = [];
@@ -50,6 +51,7 @@ class TransactionProvider with ChangeNotifier {
         description: transaction.description,
         date: transaction.date,
         category: transaction.category,
+        categoryId: transaction.categoryId, // Add this
         isCredit: transaction.isCredit,
         contactName: transaction.contactName,
         contactPhone: transaction.contactPhone,
@@ -94,15 +96,80 @@ class TransactionProvider with ChangeNotifier {
     }
   }
 
-  // Get today's transactions
-  Future<List<BusinessTransaction>> getTodayTransactions() async {
-    final today = DateTime.now();
-    return _transactions
-        .where((t) =>
-            t.date.day == today.day &&
-            t.date.month == today.month &&
-            t.date.year == today.year)
-        .toList();
+  // ===========================================================================
+  // CATEGORY-RELATED METHODS
+  // ===========================================================================
+
+  // Get transactions by category ID
+  List<BusinessTransaction> getTransactionsByCategory(String categoryId) {
+    return _transactions.where((t) => t.categoryId == categoryId).toList();
+  }
+
+  // Get category total for a specific period
+  double getCategoryTotal(String categoryId, String type, {DateTime? month}) {
+    var filtered = _transactions
+        .where((t) => t.categoryId == categoryId && t.type == type);
+
+    if (month != null) {
+      filtered = filtered.where(
+          (t) => t.date.year == month.year && t.date.month == month.month);
+    }
+
+    return filtered.fold(0.0, (sum, transaction) => sum + transaction.amount);
+  }
+
+  // Get transactions for a specific category and period
+  List<BusinessTransaction> getCategoryTransactions(
+    String categoryId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) {
+    var filtered = _transactions.where((t) => t.categoryId == categoryId);
+
+    if (startDate != null) {
+      filtered = filtered
+          .where((t) => t.date.isAfter(startDate.subtract(Duration(days: 1))));
+    }
+
+    if (endDate != null) {
+      filtered = filtered
+          .where((t) => t.date.isBefore(endDate.add(Duration(days: 1))));
+    }
+
+    return filtered.toList();
+  }
+
+  // Get top categories by amount
+  Map<String, double> getTopCategories(String type,
+      {int limit = 5, DateTime? month}) {
+    final categoryTotals = <String, double>{};
+
+    var filtered = _transactions.where((t) => t.type == type);
+
+    if (month != null) {
+      filtered = filtered.where(
+          (t) => t.date.year == month.year && t.date.month == month.month);
+    }
+
+    for (final transaction in filtered) {
+      final categoryId = transaction.categoryId ?? 'uncategorized';
+      final categoryName = transaction.category ?? 'Uncategorized';
+      final key = '$categoryId|$categoryName';
+      categoryTotals[key] = (categoryTotals[key] ?? 0) + transaction.amount;
+    }
+
+    // Sort by amount descending and take top N
+    final sortedEntries = categoryTotals.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final result = <String, double>{};
+    for (int i = 0; i < limit && i < sortedEntries.length; i++) {
+      final entry = sortedEntries[i];
+      final categoryName = entry.key.split('|')[1];
+      result[categoryName] = entry.value;
+    }
+
+    return result;
   }
 
   // ===========================================================================
@@ -161,6 +228,38 @@ class TransactionProvider with ChangeNotifier {
     return categories;
   }
 
+  // Enhanced version with category IDs
+  Map<String, Map<String, dynamic>> getExpensesByCategoryWithDetails(
+      DateTime month) {
+    final expenseTransactions = getExpenseTransactionsByMonth(month);
+    final categories = <String, Map<String, dynamic>>{};
+
+    for (final transaction in expenseTransactions) {
+      final categoryName =
+          transaction.category ?? _getDefaultExpenseCategory(transaction.type);
+      final categoryId =
+          transaction.categoryId ?? 'default_${transaction.type}';
+
+      if (!categories.containsKey(categoryId)) {
+        categories[categoryId] = {
+          'name': categoryName,
+          'amount': 0.0,
+          'count': 0,
+          'transactions': <BusinessTransaction>[],
+        };
+      }
+
+      categories[categoryId]!['amount'] =
+          (categories[categoryId]!['amount'] as double) + transaction.amount;
+      categories[categoryId]!['count'] =
+          (categories[categoryId]!['count'] as int) + 1;
+      (categories[categoryId]!['transactions'] as List<BusinessTransaction>)
+          .add(transaction);
+    }
+
+    return categories;
+  }
+
   String _getDefaultExpenseCategory(String type) {
     switch (type) {
       case 'purchase':
@@ -179,6 +278,17 @@ class TransactionProvider with ChangeNotifier {
   // ===========================================================================
   // FINANCIAL SUMMARY METHODS
   // ===========================================================================
+
+  // Get today's transactions
+  Future<List<BusinessTransaction>> getTodayTransactions() async {
+    final today = DateTime.now();
+    return _transactions
+        .where((t) =>
+            t.date.day == today.day &&
+            t.date.month == today.month &&
+            t.date.year == today.year)
+        .toList();
+  }
 
   double getTodaySales() {
     final today = DateTime.now();
@@ -304,6 +414,7 @@ class TransactionProvider with ChangeNotifier {
         description: 'Product sales - Electronics',
         date: DateTime.now().subtract(Duration(days: 2)),
         category: 'Electronics',
+        categoryId: '1',
       ),
       BusinessTransaction(
         id: 2,
@@ -312,6 +423,7 @@ class TransactionProvider with ChangeNotifier {
         description: 'Clothing sales',
         date: DateTime.now().subtract(Duration(days: 5)),
         category: 'Clothing',
+        categoryId: '2',
       ),
       BusinessTransaction(
         id: 3,
@@ -320,6 +432,7 @@ class TransactionProvider with ChangeNotifier {
         description: 'Office supplies',
         date: DateTime.now().subtract(Duration(days: 1)),
         category: 'Supplies',
+        categoryId: '4',
       ),
       BusinessTransaction(
         id: 4,
@@ -328,6 +441,7 @@ class TransactionProvider with ChangeNotifier {
         description: 'Inventory restock',
         date: DateTime.now().subtract(Duration(days: 3)),
         category: 'Inventory',
+        categoryId: '5',
       ),
       BusinessTransaction(
         id: 5,
@@ -336,6 +450,7 @@ class TransactionProvider with ChangeNotifier {
         description: 'Cash withdrawal',
         date: DateTime.now().subtract(Duration(days: 7)),
         category: 'Withdrawals',
+        categoryId: '6',
       ),
     ];
     */
@@ -349,16 +464,4 @@ class TransactionProvider with ChangeNotifier {
     // Optional: Save to browser's local storage
     // _saveToLocalStorage(transactions);
   }
-
-  // Optional: Local storage implementation for web
-  /*
-  void _saveToLocalStorage(List<BusinessTransaction> transactions) {
-    try {
-      final transactionsJson = transactions.map((t) => t.toMap()).toList();
-      // Use shared_preferences or window.localStorage here
-    } catch (e) {
-      print('Error saving to local storage: $e');
-    }
-  }
-  */
 }

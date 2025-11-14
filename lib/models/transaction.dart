@@ -1,12 +1,11 @@
-//# Replace the entire transaction.dart file
-//@"
 class BusinessTransaction {
-  int? id;
+  final int? id;
   final double amount;
   final String type;
   final String description;
   final DateTime date;
-  final String? category;
+  final String? category; // Category name for backward compatibility
+  final String? categoryId; // Add this - reference to Category model
   final bool isCredit;
   final String? contactName;
   final String? contactPhone;
@@ -19,6 +18,7 @@ class BusinessTransaction {
     required this.description,
     required this.date,
     this.category,
+    this.categoryId, // Add this
     this.isCredit = false,
     this.contactName,
     this.contactPhone,
@@ -31,12 +31,13 @@ class BusinessTransaction {
       'amount': amount,
       'type': type,
       'description': description,
-      'date': date.toIso8601String(),
+      'date': date.millisecondsSinceEpoch,
       'category': category,
-      'is_credit': isCredit ? 1 : 0,
-      'contact_name': contactName,
-      'contact_phone': contactPhone,
-      'mpesa_reference': mpesaReference,
+      'categoryId': categoryId, // Add this
+      'isCredit': isCredit ? 1 : 0,
+      'contactName': contactName,
+      'contactPhone': contactPhone,
+      'mpesaReference': mpesaReference,
     };
   }
 
@@ -46,13 +47,13 @@ class BusinessTransaction {
       amount: map['amount'],
       type: map['type'],
       description: map['description'],
-      date: DateTime.parse(map['date']),
+      date: DateTime.fromMillisecondsSinceEpoch(map['date']),
       category: map['category'],
-      isCredit: map['is_credit'] == 1,
-      contactName: map['contact_name'],
-      contactPhone: map['contact_phone'],
-      mpesaReference: map['mpesa_reference'],
+      categoryId: map['categoryId'], // Add this
+      isCredit: map['isCredit'] == 1,
+      contactName: map['contactName'],
+      contactPhone: map['contactPhone'],
+      mpesaReference: map['mpesaReference'],
     );
   }
 }
-//"@ | Out-File -FilePath "lib\models\transaction.dart" -Encoding utf8

@@ -1,152 +1,108 @@
-import 'package:flutter/material.dart';
-import '../services/memory_storage_service.dart';
+import 'package:flutter/foundation.dart';
 
-class BusinessProfile {
-  final String businessName;
-  final String businessType;
-  final String contactInfo;
-  final String location;
-  final String? email;
-  final String? phone;
+class BusinessProfileProvider with ChangeNotifier {
+  String _businessName;
+  String _industry;
+  String _currency;
+  String _fiscalYear;
+  String _location;
+  String _contactInfo;
+  String _email;
+  String _phone;
 
-  BusinessProfile({
-    required this.businessName,
-    required this.businessType,
-    required this.contactInfo,
-    required this.location,
-    this.email,
-    this.phone,
-  });
+  // Getters
+  String get businessName => _businessName;
+  String get industry => _industry;
+  String get currency => _currency;
+  String get fiscalYear => _fiscalYear;
+  String get location => _location;
+  String get contactInfo => _contactInfo;
+  String get email => _email;
+  String get phone => _phone;
 
+  // Setters
+  void setBusinessName(String name) {
+    _businessName = name;
+    notifyListeners();
+  }
+
+  void setIndustry(String industry) {
+    _industry = industry;
+    notifyListeners();
+  }
+
+  void setCurrency(String currency) {
+    _currency = currency;
+    notifyListeners();
+  }
+
+  void setFiscalYear(String year) {
+    _fiscalYear = year;
+    notifyListeners();
+  }
+
+  void setLocation(String location) {
+    _location = location;
+    notifyListeners();
+  }
+
+  void setContactInfo(String contactInfo) {
+    _contactInfo = contactInfo;
+    notifyListeners();
+  }
+
+  void setEmail(String email) {
+    _email = email;
+    notifyListeners();
+  }
+
+  void setPhone(String phone) {
+    _phone = phone;
+    notifyListeners();
+  }
+
+  // Initialize with default values
+  BusinessProfileProvider()
+      : _businessName = 'My Business',
+        _industry = 'Retail',
+        _currency = 'KES',
+        _fiscalYear = '2024',
+        _location = '',
+        _contactInfo = '',
+        _email = '',
+        _phone = '';
+
+  // Method to save to storage (for future implementation)
+  Future<void> saveToStorage() async {
+    // TODO: Implement saving to shared_preferences or database
+    print('Business profile saved to storage');
+  }
+
+  // Convert to map for storage
   Map<String, dynamic> toMap() {
     return {
-      'businessName': businessName,
-      'businessType': businessType,
-      'contactInfo': contactInfo,
-      'location': location,
-      'email': email,
-      'phone': phone,
+      'businessName': _businessName,
+      'industry': _industry,
+      'currency': _currency,
+      'fiscalYear': _fiscalYear,
+      'location': _location,
+      'contactInfo': _contactInfo,
+      'email': _email,
+      'phone': _phone,
     };
   }
 
-  factory BusinessProfile.fromMap(Map<String, dynamic> map) {
-    return BusinessProfile(
-      businessName: map['businessName'] ?? 'My Business',
-      businessType: map['businessType'] ?? 'Retail',
-      contactInfo: map['contactInfo'] ?? '',
-      location: map['location'] ?? '',
-      email: map['email'],
-      phone: map['phone'],
-    );
-  }
-}
-
-class BusinessProfileProvider with ChangeNotifier {
-  BusinessProfile? _businessProfile;
-  final MemoryStorageService _storageService = MemoryStorageService();
-
-  BusinessProfile? get businessProfile => _businessProfile;
-
-  BusinessProfileProvider() {
-    loadBusinessProfile();
-  }
-
-  Future<void> loadBusinessProfile() async {
-    try {
-      final profileData = await _storageService.getBusinessProfile();
-
-      if (profileData != null) {
-        _businessProfile = BusinessProfile.fromMap(profileData);
-      } else {
-        // Create default profile if none exists
-        _businessProfile = BusinessProfile(
-          businessName: 'My Business',
-          businessType: 'Retail',
-          contactInfo: '',
-          location: '',
-        );
-        // Save the default profile
-        await _storageService.saveBusinessProfile(_businessProfile!.toMap());
-      }
-      notifyListeners();
-    } catch (e) {
-      print('Error loading business profile: $e');
-      // Fallback to default profile
-      _businessProfile = BusinessProfile(
-        businessName: 'My Business',
-        businessType: 'Retail',
-        contactInfo: '',
-        location: '',
-      );
-      notifyListeners();
-    }
-  }
-
-  Future<void> saveBusinessProfile(Map<String, dynamic> profileData) async {
-    try {
-      _businessProfile = BusinessProfile(
-        businessName: profileData['businessName'] ?? 'My Business',
-        businessType: profileData['businessType'] ?? 'Retail',
-        contactInfo: profileData['contactInfo'] ?? '',
-        location: profileData['location'] ?? '',
-        email: profileData['email'],
-        phone: profileData['phone'],
-      );
-
-      // Save to storage
-      await _storageService.saveBusinessProfile(_businessProfile!.toMap());
-
-      notifyListeners();
-    } catch (e) {
-      print('Error saving business profile: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> updateBusinessProfile({
-    String? businessName,
-    String? businessType,
-    String? contactInfo,
-    String? location,
-    String? email,
-    String? phone,
-  }) async {
-    try {
-      _businessProfile = BusinessProfile(
-        businessName:
-            businessName ?? _businessProfile?.businessName ?? 'My Business',
-        businessType:
-            businessType ?? _businessProfile?.businessType ?? 'Retail',
-        contactInfo: contactInfo ?? _businessProfile?.contactInfo ?? '',
-        location: location ?? _businessProfile?.location ?? '',
-        email: email ?? _businessProfile?.email,
-        phone: phone ?? _businessProfile?.phone,
-      );
-
-      // Save to storage
-      await _storageService.saveBusinessProfile(_businessProfile!.toMap());
-
-      notifyListeners();
-    } catch (e) {
-      print('Error updating business profile: $e');
-      rethrow;
-    }
-  }
-
-  bool get isProfileSet {
-    return _businessProfile != null &&
-        _businessProfile!.businessName.isNotEmpty &&
-        _businessProfile!.businessType.isNotEmpty;
-  }
-
-  // Method to clear profile (optional)
-  Future<void> clearProfile() async {
-    await _storageService.saveBusinessProfile({
-      'businessName': 'My Business',
-      'businessType': 'Retail',
-      'contactInfo': '',
-      'location': '',
-    });
-    await loadBusinessProfile(); // Reload the default profile
+  // Create from map
+  factory BusinessProfileProvider.fromMap(Map<String, dynamic> map) {
+    final provider = BusinessProfileProvider();
+    provider._businessName = map['businessName'] ?? 'My Business';
+    provider._industry = map['industry'] ?? 'Retail';
+    provider._currency = map['currency'] ?? 'KES';
+    provider._fiscalYear = map['fiscalYear'] ?? '2024';
+    provider._location = map['location'] ?? '';
+    provider._contactInfo = map['contactInfo'] ?? '';
+    provider._email = map['email'] ?? '';
+    provider._phone = map['phone'] ?? '';
+    return provider;
   }
 }
