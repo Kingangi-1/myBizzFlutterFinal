@@ -1,40 +1,50 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/credit_provider.dart';
 import 'providers/business_profile_provider.dart';
-import 'providers/category_provider.dart'; // Add this import
+import 'providers/category_provider.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/transactions_screen.dart';
 import 'screens/credits_screen.dart';
 import 'screens/reports_screen.dart';
 import 'screens/settings_screen.dart';
-import 'screens/categories_screen.dart'; // Add this import
+import 'screens/categories_screen.dart';
 import 'utils/constants.dart';
 
 void main() async {
   // Initialize Flutter bindings
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize sqflite for desktop platforms
-  _initializeDatabase();
+  // Initialize database based on platform
+  await _initializeDatabase();
 
   runApp(MyApp());
 }
 
-void _initializeDatabase() {
+Future<void> _initializeDatabase() async {
   try {
-    // Initialize FFI for sqflite
-    sqfliteFfiInit();
-
-    // Set the database factory for desktop platforms
-    databaseFactory = databaseFactoryFfi;
-
-    print('Database factory initialized successfully');
+    // Only initialize FFI for desktop platforms
+    if (_isDesktop()) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      print('FFI Database initialized for desktop platform');
+    } else {
+      // For mobile, use native sqflite (no initialization needed)
+      print('Using native sqflite for mobile platform');
+    }
   } catch (e) {
     print('Error initializing database: $e');
   }
+}
+
+bool _isDesktop() {
+  if (kIsWeb) return false;
+
+  return Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 }
 
 class MyApp extends StatelessWidget {
@@ -45,7 +55,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => CreditProvider()),
         ChangeNotifierProvider(create: (_) => BusinessProfileProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryProvider()), // Add this
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
       ],
       child: MaterialApp(
         title: AppConstants.appName,
@@ -56,6 +66,15 @@ class MyApp extends StatelessWidget {
           colorScheme: ColorScheme.fromSeed(
             seedColor: AppConstants.primaryColor,
             brightness: Brightness.light,
+          ),
+          appBarTheme: AppBarTheme(
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: Colors.white,
+            elevation: 0,
+          ),
+          floatingActionButtonTheme: FloatingActionButtonThemeData(
+            backgroundColor: AppConstants.primaryColor,
+            foregroundColor: Colors.white,
           ),
         ),
         home: MainNavigationScreen(),
@@ -100,6 +119,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         selectedItemColor: AppConstants.primaryColor,
         unselectedItemColor: Colors.grey[600],
         selectedLabelStyle: TextStyle(fontWeight: FontWeight.w500),
+        unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal),
         items: [
           BottomNavigationBarItem(
             icon: Icon(Icons.dashboard_outlined),
